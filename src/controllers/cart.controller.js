@@ -1,88 +1,143 @@
-import { Router } from 'express'
-import { cartsModel } from '../DAOs/mongodb/models/carts.models.js'
-import { productsModel } from '../DAOs/mongodb/models/products.models.js'
+import { Router } from 'express';
+import { cartModel } from '../DAOs/mongodb/models/carts.models.js';
+import { productsModel } from '../DAOs/mongodb/models/products.models.js';
 
-const router = Router()
+const router = Router();
 
-
-router.get('/', async (req, res) => {
-    try{
-        const carts = await cartsModel.find()
-        console.log("🚀 ~ router.get ~ carts:", carts)
-        //res.json({ message: carts })
-        res.render('carts')
-    } catch (error) {
-        res.status(500).json({ status: 'error', error: 'Internal error' });
-    }
-})
-
+router.get('/api', async (req, res) => {
+	try {
+		const result = await cartModel.find();
+		res.json({ message: result });
+	} catch (error) {
+		res.status(500).json({ status: 'error', error: 'Internal error' });
+	}
+});
 router.get('/:cid', async (req, res) => {
-    try {
-        const { cid } = req.params
-        const cart = await cartsModel.findById(cid).populate('products').
-        exec();
-        res.json({ message: cart })
-    } catch (error) {
-        res.status(500).json({ status: 'error', error });
-    }
-})
-
-
-
-
-
-
-//crear un carrito
-router.post("/",async (req,res)=>{
-    try {
-        const cart = new cartsModel();
-        cart.save();
-        res.send(cart)
-    } catch (error) {
-        
-    }
+	try {
+		const { cid } = req.params;
+		const cart = await cartModel.findById(cid).lean();
+		console.log(cart);
+		res.render('cart', {
+			cart: cart._id.toString(),
+			products: cart.products,
+			style: 'cart.css',
+		});
+		//res.json({ message: cart });
+	} catch (error) {
+		res.status(500).json({ status: 'error', error: 'Internal error' });
+	}
 });
 
-
-//agregar un producto a un carrito
-router.post('/:cid/product/:pid', async (req, res) => {
-    try {
-        const { cid, pid } = req.params
-        const product = await productsModel.findById(pid);
-        if(product){
-            const result = await cartsModel.updateOne({ _id: cid }, { $push: { products: product._id } } )
-            res.status(201).send(result)
-        }else{
-            res.send({data:[],message:"no existe tal producto"})
-        }
-        //res.json({ message: result })
-    } catch (error) {
-        res.status(500).json({ status: 'error', error});
-    }
-})
+router.post('/', async (req, res) => {
+	try {
+		const response = await cartModel.create(req.body);
+		res.json(response);
+	} catch (error) {
+		console.log(error);
+		res.status(500).json({ status: 'error', error: 'Internal error' });
+	}
+});
 
 router.put('/:cid/product/:pid', async (req, res) => {
-    try {
-        const { cid, pid } = req.params
-        const { qty } = req.body
-        const result = await cartsModel.updateOne({ _id: cid, }, { $set: { 'products.$.quantity': qty }})
-        res.json({ message: result })
-    } catch (error) {
-        res.status(500).json({ status: 'error', error: 'Internal error' });
-    }
-})
+	const { cid, pid } = req.params;
+
+	const isCartValid = await cartModel.findById(cid);
+	const isProductValid = await productsModel.findById(pid);
+	let hasChange = false;
+
+	const newProduct = {
+		product: pid,
+		quantity: 1,
+	};
+
+	if (!isCartValid || !isProductValid) {
+		return res.status(400).json({
+			status: 'error',
+			message: 'Cart or product not found',
+		});
+	}
+
+	const productIndex = isCartValid.products.findIndex(
+		(product) => product.product.equals(pid)
+		// product.product.toString().includes(pid)
+	);
+
+	if (productIndex === -1) {
+		isCartValid.products.push(newProduct);
+		hasChange = true;
+	} else {
+		isCartValid.products[productIndex].quantity++;
+		hasChange = true;
+	}
+
+	if (hasChange) {
+		const result = await cartModel.findByIdAndUpdate(cid, {
+			products: isCartValid.products,
+		});
+		res.json({
+			status: 'ok',
+			message: isCartValid,
+		});
+	}
+});
 
 router.delete('/:cid/product/:pid', async (req, res) => {
-    try {
-        const { cid, pid } = req.params
-        const result = await cartsModel.deleteOne({ _id: cid }, { $pull: { products: { product: pid }}})
-        res.json({ message: result })
-    } catch (error) {
-        res.status(500).json({ status: 'error', error: 'Internal error' });
-    }
-})
+	const { cid, pid } = req.params;
 
-export default router
+	const isCartValid = await cartModel.findById(cid);
+	const isProductValid = await productsModel.findById(pid);
+	let hasChange = false;
 
+	const newProduct = {
+		product: pid,
+		quantity: 1,
+	};
 
+	if (!isCartValid || !isProductValid) {
+		return res.status(400).json({
+			status: 'error',
+			message: 'Cart or product not found',
+		});
+	}
 
+	const productIndex = isCartValid.products.findIndex(
+		(product) => product.product.equals(pid)
+		// product.product.toString().includes(pid)
+	);
+
+	if (productIndex === -1) {
+		res.status(400).json({
+			status: 'error',
+			message: 'Product not found',
+		});
+	} else {
+		isCartValid.products[productIndex].quantity--;
+		if (isCartValid.products[productIndex].quantity === 0) {
+			isCartValid.products.splice(productIndex, 1);
+		}
+		hasChange = true;
+	}
+
+	if (hasChange) {
+		const result = await cartModel.findByIdAndUpdate(cid, {
+			products: isCartValid.products,
+		});
+		res.json({
+			status: 'ok',
+			message: isCartValid,
+			result: result,
+		});
+	}
+});
+
+router.delete('/:cid', async (req, res) => {
+	try {
+		const { cid } = req.params;
+		const result = await cartModel.deleteOne({ _id: cid });
+		res.json({ message: result });
+	} catch (error) {
+		console.log(error);
+		res.status(500).json({ status: 'error', error: 'Internal error' });
+	}
+});
+export default router;

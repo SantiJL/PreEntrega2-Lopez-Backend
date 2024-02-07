@@ -1,0 +1,59 @@
+.cartContainer {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+}
+
+.cartHeader {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cartContent {
+    width: 100%;
+}
+
+.cartContentHeader {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.cartContentHeaderItem {
+    flex: 1;
+    text-align: center;
+}
+
+.cartContentBody {
+    width: 100%;
+}
+
+.cartContentBodyItem {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+}
+
+.cartContentBodyItemImg,
+.cartContentBodyItemName,
+.cartContentBodyItemPrice,
+.cartContentBodyItemQuantity,
+.cartContentBodyItemSubtotal {
+    flex: 1;
+    text-align: center;
+}
+
+.cartContentBodyItemImg img {
+    max-width: 50px;
+    max-height: 50px;
+}
+
+.cartContentBodyItemName p,
+.cartContentBodyItemPrice p,
+.cartContentBodyItemQuantity p,
+.cartContentBodyItemSubtotal p {
+    margin: 0;
+}
